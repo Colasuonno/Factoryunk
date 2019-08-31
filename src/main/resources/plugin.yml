@@ -1,0 +1,6 @@
+name: Factoryunk
+version: 0.1-ALPHA
+main: com.unknown.factoryunk.FactoryUnk
+description: Factory builder
+depend: ["Factions"]
+authors: ["Unknown"]
