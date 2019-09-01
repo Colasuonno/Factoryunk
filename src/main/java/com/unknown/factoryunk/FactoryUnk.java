@@ -5,6 +5,7 @@ import com.unknown.factoryunk.gui.listeners.InventoryListener;
 import com.unknown.factoryunk.items.factories.Factories;
 import com.unknown.factoryunk.items.factories.Factory;
 import com.unknown.factoryunk.listener.PlayerListener;
+import com.unknown.factoryunk.task.FactoryChecker;
 import com.unknown.factoryunk.utils.YamlConfig;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,6 +22,8 @@ public class FactoryUnk extends JavaPlugin {
 
         new InventoryListener(this);
         new PlayerListener(this);
+
+        new FactoryChecker().runTaskTimer(this, 0L, 10L);
 
         factories = new Factories(this);
         commandManager = new CommandManager(this);

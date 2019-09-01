@@ -5,10 +5,7 @@ import lombok.Data;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Item;
+import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -50,6 +47,14 @@ import java.util.List;
         }
 
         return entities;
+    }
+
+    public void modify(String contains, String replaceValue, Class<? extends Entity> classz){
+        for (Entity entity : entities){
+            if (classz.isAssignableFrom(entity.getClass())){
+               if (entity.getCustomName() != null && entity.getCustomName().contains(contains)) entity.setCustomName(replaceValue);
+            }
+        }
     }
 
     public void destroy(){

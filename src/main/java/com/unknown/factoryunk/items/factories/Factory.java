@@ -1,70 +1,49 @@
 package com.unknown.factoryunk.items.factories;
 
-import com.sk89q.worldedit.EditSession;
-import com.sk89q.worldedit.Vector;
-import com.sk89q.worldedit.WorldEdit;
-import com.sk89q.worldedit.bukkit.BukkitWorld;
-import com.sk89q.worldedit.extent.clipboard.Clipboard;
-import com.sk89q.worldedit.extent.clipboard.ClipboardFormats;
-import com.sk89q.worldedit.extent.clipboard.io.ClipboardFormat;
-import com.sk89q.worldedit.function.mask.ExistingBlockMask;
-import com.sk89q.worldedit.function.operation.ForwardExtentCopy;
-import com.sk89q.worldedit.function.operation.Operations;
-import com.sk89q.worldedit.math.transform.AffineTransform;
-import com.sk89q.worldedit.math.transform.Transform;
-import com.sk89q.worldedit.regions.CuboidRegion;
-import com.sk89q.worldedit.regions.Region;
-import com.sk89q.worldedit.world.World;
-import com.sk89q.worldedit.world.registry.WorldData;
 import com.unknown.factoryunk.exceptions.FactoryException;
 import com.unknown.factoryunk.hologram.HologramLines;
 import com.unknown.factoryunk.items.blueprint.Blueprint;
 import com.unknown.factoryunk.items.blueprint.FactoryType;
-import com.unknown.factoryunk.utils.ItemFall;
-import com.unknown.factoryunk.utils.LocationUtil;
-import com.unknown.factoryunk.utils.StringUtils;
-import com.unknown.factoryunk.utils.YamlConfig;
+import com.unknown.factoryunk.items.factories.types.CommonFactory;
+import com.unknown.factoryunk.items.factories.types.LegendaryFactory;
+import com.unknown.factoryunk.utils.*;
 import lombok.Data;
 import lombok.Getter;
 import lombok.ToString;
-import net.minecraft.server.v1_8_R3.Items;
-import net.minecraft.server.v1_8_R3.NBTCompressedStreamTools;
-import net.minecraft.server.v1_8_R3.NBTTagCompound;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.Sign;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.net.URL;
 import java.util.*;
 
 @Data
 @ToString
 public class Factory implements Blueprint {
 
+    // Factory core
     private UUID owner;
-    private Location blockLocation;
     private Set<UUID> admins;
     private Material material;
     private HologramLines lines;
-    private int health;
     private FactoryType type;
+
+    // Factory build
     private Cuboid cuboid;
     private Location center;
     private Location pos1;
     private Location pos2;
-    
-    public static final int FACTORY_MAX_HEALTH = 100;
+    private Location blockLocation;
+
+    // Factory info
+    private int health;
+    private long lastDrop; // start to 0L
+    private long delayInMillis = 5000L; // delay for the reward, 5000L is the default value
+
+    public static final int FACTORY_MAX_HEALTH = 200;
 
     /*
         Used to cache all the factories
@@ -112,56 +91,15 @@ public class Factory implements Blueprint {
         this(material, type, null, new HashSet<>(), -1);
     }
 
-    public Schematic loadSchematic(Plugin plugin, String name) {
-        if (!name.endsWith(".schematic"))
-            name = name + ".schematic";
-        File file = new File(plugin.getDataFolder().getAbsolutePath() + "/schematics/online.schematic");
-        if (!file.exists())
-            return null;
-        try {
-            FileInputStream stream = new FileInputStream(file);
-            NBTTagCompound nbtdata = NBTCompressedStreamTools.a(stream);
-
-            short width = nbtdata.getShort("Width");
-            short height = nbtdata.getShort("Height");
-            short length = nbtdata.getShort("Length");
-
-            byte[] blocks = nbtdata.getByteArray("Blocks");
-            byte[] data = nbtdata.getByteArray("Data");
-
-            byte[] addId = new byte[0];
-
-            if (nbtdata.hasKey("AddBlocks")) {
-                addId = nbtdata.getByteArray("AddBlocks");
-            }
-
-            short[] sblocks = new short[blocks.length];
-            for (int index = 0; index < blocks.length; index++) {
-                if ((index >> 1) >= addId.length) {
-                    sblocks[index] = (short) (blocks[index] & 0xFF);
-                } else {
-                    if ((index & 1) == 0) {
-                        sblocks[index] = (short) (((addId[index >> 1] & 0x0F) << 8) + (blocks[index] & 0xFF));
-                    } else {
-                        sblocks[index] = (short) (((addId[index >> 1] & 0xF0) << 4) + (blocks[index] & 0xFF));
-                    }
-                }
-            }
-
-            stream.close();
-            return new Schematic(name, sblocks, data, width, length, height);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+    public Factory() {
     }
 
     public void restore(Location center){
 
         HologramLines hologramLines = new HologramLines(
                 ChatColor.GOLD + "Factory " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase()),
-                "QUERY -- <DIAMOND> -- QUERY",
-                ChatColor.GREEN + "Health: 100%"
+                "QUERY -- <" + material.name() + "> -- QUERY",
+                ChatColor.GREEN + "Health: " + getHealthPercentage()
         );
 
         hologramLines.show(center, 0.4D);
@@ -174,7 +112,7 @@ public class Factory implements Blueprint {
 
         this.blockLocation = block.getLocation();
 
-        Schematic schematic = loadSchematic(plugin, "online");
+        Schematic schematic = SchematicLoader.loadSchematic(plugin, "online");
         List<Location> locations = new ArrayList<>();
 
         for(int x = 0; x < schematic.getWidth(); ++x){
@@ -248,18 +186,29 @@ public class Factory implements Blueprint {
         }
 
         this.health = FACTORY_MAX_HEALTH;
-
         HologramLines hologramLines = new HologramLines(
                 ChatColor.GOLD + "Factory " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase()),
-                "QUERY -- <DIAMOND> -- QUERY",
-                ChatColor.GREEN + "Health: 100%"
+                "QUERY -- <" + material.toString() +  "> -- QUERY",
+                ChatColor.GREEN + "Health: " + getHealthPercentage()
         );
 
         hologramLines.show(center, 0.4D);
         this.lines = hologramLines;
+        this.pos1 = pos1;
+        this.pos2 = pos2;
+        this.cuboid = new Cuboid(this.pos1, this.pos2);
+
         factories.add(this);
 
 
+    }
+
+    public boolean canDrop(){
+        return System.currentTimeMillis()-lastDrop >= delayInMillis;
+    }
+
+    public void reduceHealth(int amount){
+        this.health -= amount;
     }
 
     @Override
@@ -278,6 +227,12 @@ public class Factory implements Blueprint {
         return this.type;
     }
 
+    public String getHealthPercentage(){
+        // 200 : 100 = health : x
+        System.out.println(health);
+        return ((health * 100) / 200) + "%";
+    }
+
     /**
      * Gets factory from location
      *
@@ -289,6 +244,13 @@ public class Factory implements Blueprint {
                 .filter(factory -> factory.getBlockLocation().equals(location))
                 .findAny()
                 .orElse(null);
+    }
+
+    /**
+     * Called every time a factory find an item, should be different for each factory type
+     */
+    public void reward(){
+        //EMPTY FUNCTION
     }
 
 }
