@@ -7,6 +7,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +27,12 @@ import java.util.List;
      * @param center the location
      * @param yOffset the amount of negative blocks between an hologram an another
      */
-    public List<Entity> show(Location center, double yOffset){
+    public List<Entity> show(Plugin plugin, Location center, double yOffset){
 
         for (int i = 0; i < lines.length; i++){
             String text = lines[i];
             ArmorStand armorStand = (ArmorStand) center.getWorld().spawnEntity(center.clone().subtract(0.0D, text.contains("<") ? i*yOffset - (yOffset + (yOffset/2)) : i*yOffset, 0.0D), EntityType.ARMOR_STAND);
+            armorStand.setMetadata("destroy$load", new FixedMetadataValue(plugin, "yes!"));
             armorStand.setVisible(false);
             armorStand.setGravity(false);
             if (text.contains("<")){

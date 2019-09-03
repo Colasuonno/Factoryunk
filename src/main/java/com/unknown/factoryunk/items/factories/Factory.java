@@ -1,6 +1,11 @@
 package com.unknown.factoryunk.items.factories;
 
+import com.google.common.collect.Lists;
 import com.unknown.factoryunk.exceptions.FactoryException;
+import com.unknown.factoryunk.gui.OrbInventory;
+import com.unknown.factoryunk.gui.OrbInventoryExitItem;
+import com.unknown.factoryunk.gui.OrbInventoryItem;
+import com.unknown.factoryunk.gui.listeners.OrbInventoryListener;
 import com.unknown.factoryunk.hologram.HologramLines;
 import com.unknown.factoryunk.items.blueprint.Blueprint;
 import com.unknown.factoryunk.items.blueprint.FactoryType;
@@ -15,6 +20,10 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
@@ -29,6 +38,7 @@ public class Factory implements Blueprint {
     private Set<UUID> admins;
     private Material material;
     private HologramLines lines;
+    private long created;
     private FactoryType type;
 
     // Factory build
@@ -42,6 +52,8 @@ public class Factory implements Blueprint {
     private int health;
     private long lastDrop; // start to 0L
     private long delayInMillis = 5000L; // delay for the reward, 5000L is the default value
+    private int factoryItemsAmount = 64 * 5; // TODO: implement different types of factory storage
+    private int itemsCollected = 0;
 
     public static final int FACTORY_MAX_HEALTH = 200;
 
@@ -55,8 +67,9 @@ public class Factory implements Blueprint {
      * Restore constructor
      * @see #Factory(Material, FactoryType, UUID, Set, int)
      */
-    public Factory(UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
+    public Factory(long created, UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
         this.owner = owner;
+        this.created = created;
         this.blockLocation = blockLocation;
         this.admins = admins;
         this.material = material;
@@ -80,6 +93,7 @@ public class Factory implements Blueprint {
     public Factory(Material material, FactoryType type, UUID owner, Set<UUID> admins, int health) {
         if (!type.isValid(material))
             throw new FactoryException(material + " is not a valid type for " + type.name() + " Factory");
+        this.created = System.currentTimeMillis();
         this.material = material;
         this.type = type;
         this.owner = owner;
@@ -94,7 +108,7 @@ public class Factory implements Blueprint {
     public Factory() {
     }
 
-    public void restore(Location center){
+    public void restore(Plugin plugin, Location center){
 
         HologramLines hologramLines = new HologramLines(
                 ChatColor.GOLD + "Factory " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase()),
@@ -102,7 +116,7 @@ public class Factory implements Blueprint {
                 ChatColor.GREEN + "Health: " + getHealthPercentage()
         );
 
-        hologramLines.show(center, 0.4D);
+        hologramLines.show(plugin, center, 0.4D);
 
         this.lines = hologramLines;
     }
@@ -172,7 +186,7 @@ public class Factory implements Blueprint {
         Location center = block.getLocation().clone().add(centerX, centerY, centerZ);
 
         if (store){
-            String path = "factories." + System.currentTimeMillis() + ".";
+            String path = "factories." + created + ".";
             FileConfiguration fileConfiguration = YamlConfig.getConfiguration(plugin, "factories");
             fileConfiguration.set(path + "owner", owner.toString());
             fileConfiguration.set(path + "placed", LocationUtil.convertToString(blockLocation));
@@ -182,6 +196,8 @@ public class Factory implements Blueprint {
             fileConfiguration.set(path + "material", material.name());
             fileConfiguration.set(path + "lastHealth", FACTORY_MAX_HEALTH);
             fileConfiguration.set(path + "type", type.name());
+            fileConfiguration.set(path + "collectedItems", itemsCollected);
+            fileConfiguration.set(path + "admins", new ArrayList<>());
             YamlConfig.saveConfig(plugin, fileConfiguration, "factories");
         }
 
@@ -192,7 +208,7 @@ public class Factory implements Blueprint {
                 ChatColor.GREEN + "Health: " + getHealthPercentage()
         );
 
-        hologramLines.show(center, 0.4D);
+        hologramLines.show(plugin, center, 0.4D);
         this.lines = hologramLines;
         this.pos1 = pos1;
         this.pos2 = pos2;
@@ -241,9 +257,85 @@ public class Factory implements Blueprint {
      */
     public static Factory fromLocation(Location location) {
         return factories.stream()
-                .filter(factory -> factory.getBlockLocation().equals(location))
+                .filter(factory -> factory.getCuboid() != null && factory.getCuboid().contains(location))
                 .findAny()
                 .orElse(null);
+    }
+
+    public void addAdmin(Plugin plugin, UUID uuid){
+        this.admins.add(uuid);
+        YamlConfig.fastModify(plugin, "factories", "factories."+created+".admins", new ArrayList<>(this.admins));
+    }
+
+    public Inventory getInventory(){
+
+
+        // Main Inventory
+
+        OrbInventory inventory = new OrbInventory(StringUtils.firstUpper(material.name().toLowerCase()) + "'s Factory", 34, "factory", true, true);
+
+        inventory.setItem(new OrbInventoryItem(
+                new ItemFall(new ItemStack(material))
+                .name(ChatColor.GOLD + "Factory Infos")
+                .lore(Lists.newArrayList(
+                        ChatColor.GRAY + "Type: " + ChatColor.AQUA + StringUtils.firstUpper(type.toString().toLowerCase()),
+                        ChatColor.GRAY + "Reward Item: " + ChatColor.AQUA + StringUtils.firstUpper(material.toString().toLowerCase()),
+                        ChatColor.GRAY + "Items/second: " + ChatColor.AQUA + "1/" + (delayInMillis / 1000),
+                        ChatColor.GRAY + "Health: " + ChatColor.AQUA + getHealthPercentage(),
+                        ChatColor.GRAY + "Status: " + ChatColor.AQUA + (this.health > 0 ? "Online" : "Broken")
+                )), "infos", 5, 2
+        ));
+
+        inventory.setItem(new OrbInventoryItem(
+                new ItemFall(new ItemStack(Material.CHEST))
+                        .name(ChatColor.GOLD + "Factory storage")
+                        .lore(Lists.newArrayList(
+                                ChatColor.GRAY + "Size: " + ChatColor.AQUA + itemsCollected + "/" + factoryItemsAmount,
+                                ChatColor.GRAY + "Items type: " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase())
+                        )), "storage", 7, 2
+        ));
+
+        inventory.setItem(new OrbInventoryItem(
+                new ItemFall(new ItemStack(Material.GOLDEN_CARROT))
+                        .name(ChatColor.GOLD + "Factory workers")
+                        .lore(Lists.newArrayList(
+                                ChatColor.GRAY + "Click to manage your factory workers"
+                        )), "settings", 7, 2
+        ));
+
+        inventory.setItem(new OrbInventoryExitItem(
+                new ItemFall(Material.BARRIER, ChatColor.RED + "Exit", 1, (short)0,new ArrayList<>())
+        ,"exit", 9, 4));
+
+
+        inventory.setListener(new OrbInventoryListener() {
+            @Override
+            public void onClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
+
+            }
+
+            @Override
+            public void onRightClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
+
+            }
+
+            @Override
+            public void onLeftClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
+
+            }
+
+            @Override
+            public void onClose(Player player, OrbInventory inventory) {
+
+            }
+
+            @Override
+            public void onOpen(InventoryOpenEvent event, Player player, OrbInventory inventory) {
+
+            }
+        });
+
+        return inventory.getInventory();
     }
 
     /**

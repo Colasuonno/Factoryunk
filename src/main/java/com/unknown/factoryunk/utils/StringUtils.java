@@ -545,7 +545,7 @@ public class StringUtils {
             Bukkit.getOnlinePlayers()
                     .forEach(player ->
                             //  player.sendMessage(ChatColor.GRAY + "(" + ChatColor.LIGHT_PURPLE + "!" + ChatColor.GRAY + ") " + StringUtils.parseString(message, args))
-                            player.sendMessage(PREFIX + " " + StringUtils.parseString(message, args))
+                            player.sendMessage(PREFIX + ChatColor.GREEN + " " + StringUtils.parseString(message, args))
                     );
             return;
         }
@@ -598,7 +598,7 @@ public class StringUtils {
             target.sendMessage(StringUtils.parseString(message, args));
             return;
         }
-        target.sendMessage(PREFIX + " " + StringUtils.parseString(message, args) + ".");
+        target.sendMessage(PREFIX + ChatColor.GREEN +  " " + StringUtils.parseString(message, args) + ".");
     }
 
 }

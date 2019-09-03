@@ -13,8 +13,8 @@ import java.util.UUID;
 
 public class LegendaryFactory extends Factory {
 
-    public LegendaryFactory(UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
-        super(owner, blockLocation, admins, material, health, type, center, pos1, pos2);
+    public LegendaryFactory(long created, UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
+        super(created, owner, blockLocation, admins, material, health, type, center, pos1, pos2);
     }
 
     public LegendaryFactory(Material material, FactoryType type, UUID owner, Set<UUID> admins, int health) {

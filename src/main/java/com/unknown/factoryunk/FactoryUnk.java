@@ -8,6 +8,11 @@ import com.unknown.factoryunk.listener.PlayerListener;
 import com.unknown.factoryunk.task.FactoryChecker;
 import com.unknown.factoryunk.utils.YamlConfig;
 import lombok.Getter;
+import net.minecraft.server.v1_8_R3.TileEntity;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class FactoryUnk extends JavaPlugin {
@@ -17,6 +22,14 @@ public class FactoryUnk extends JavaPlugin {
 
     @Override
     public void onEnable() {
+
+        for (World worlds : Bukkit.getWorlds()){
+            for (Entity tileEntity : worlds.getEntities()){
+                if (tileEntity instanceof ArmorStand){
+                    if (tileEntity.hasMetadata("destroy$load")) tileEntity.remove();
+                }
+            }
+        }
 
         YamlConfig.create(this, "factories", true);
 

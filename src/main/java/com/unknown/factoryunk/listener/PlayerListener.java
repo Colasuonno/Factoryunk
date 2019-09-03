@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -66,11 +67,14 @@ public class PlayerListener implements Listener {
                         break;
                 }
                 factory.build(target.getRelative(BlockFace.UP), true, plugin);
-            } else if (e.getClickedBlock() != null && e.getClickedBlock().getType().equals(Material.BEDROCK)) {
+            } else if (e.getClickedBlock() != null) {
 
+                Player player = e.getPlayer();
                 Factory factory = Factory.fromLocation(e.getClickedBlock().getLocation());
                 if (factory != null) {
-                    System.out.println(factory);
+                    if (factory.getOwner().equals(player.getUniqueId()) || factory.getAdmins().contains(player.getUniqueId())){
+                        e.getPlayer().openInventory(factory.getInventory());
+                    } else StringUtils.e("Your not allowed to access this factory", player);
                 }
 
             }

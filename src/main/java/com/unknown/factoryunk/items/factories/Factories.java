@@ -39,6 +39,7 @@ public class Factories {
 
                     String path = "factories." + section + ".";
 
+                    long created = Long.valueOf(section);
                     UUID owner = UUID.fromString(fileConfiguration.getString(path + "owner"));
                     Location placed = LocationUtil.convertToLocation(fileConfiguration.getString(path + "placed"));
                     Location center = LocationUtil.convertToLocation(fileConfiguration.getString(path + "center"));
@@ -52,17 +53,17 @@ public class Factories {
 
                     switch (type) {
                         case LEGENDARY:
-                            factory = new LegendaryFactory(owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new LegendaryFactory(created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
                         case COMMON:
-                            factory = new CommonFactory(owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new CommonFactory(created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
                         default:
-                            factory = new Factory(owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new Factory(created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
 
                     }
-                    factory.restore(center);
+                    factory.restore(plugin, center);
                     Factory.getFactories().add(factory);
                 }
 
