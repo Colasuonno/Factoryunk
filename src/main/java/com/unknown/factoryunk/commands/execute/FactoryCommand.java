@@ -23,9 +23,10 @@ public class FactoryCommand extends FineCommand {
     @Override
     public void run(CommandSender sender, String label, String[] args) {
 
-        if (args.length == 2 && args[0].equalsIgnoreCase("admin")){
+        Player commandSender = (Player) sender;
 
-            Player commandSender = (Player) sender;
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("admin")){
 
             Player player = Bukkit.getPlayer(args[1]);
             if (player != null){
@@ -45,10 +46,6 @@ public class FactoryCommand extends FineCommand {
                     } else StringUtils.e("Your not the owner of the factory", commandSender);
                 } else StringUtils.e("No factory found! Make sure to be in the factory", commandSender);
             } else StringUtils.e("Player not found", sender);
-
-        } else {
-
-
 
         }
 

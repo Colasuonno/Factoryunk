@@ -4,15 +4,19 @@ import com.sun.org.apache.regexp.internal.RE;
 import com.unknown.factoryunk.items.blueprint.FactoryType;
 import com.unknown.factoryunk.items.factories.types.CommonFactory;
 import com.unknown.factoryunk.items.factories.types.LegendaryFactory;
+import com.unknown.factoryunk.items.factories.workers.FactoryWorker;
 import com.unknown.factoryunk.utils.LocationUtil;
 import com.unknown.factoryunk.utils.YamlConfig;
+import net.citizensnpcs.api.npc.NPC;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 
 public class Factories {
@@ -64,6 +68,43 @@ public class Factories {
                             break;
 
                     }
+
+                    List<NPC> npcs = new ArrayList<>();
+
+                    if (fileConfiguration.get("factories."+section+".workers") != null) {
+                        for (String workers : fileConfiguration.getConfigurationSection("factories." + section + ".workers").getKeys(false)) {
+
+                            int id = Integer.parseInt(workers);
+                            int collectedNPCItems = fileConfiguration.getInt("factories." + section + ".workers." + workers + ".collectedItems");
+
+                            FactoryWorker factoryWorker = new FactoryWorker(id, collectedNPCItems);
+
+                            factory.getWorkers().add(factoryWorker);
+
+                            NPC npc = factoryWorker.getNPC();
+                            if (npc != null){
+                                if (npc.isSpawned()) npc.despawn();
+                                npcs.add(npc);
+                            }
+
+
+                        }
+                    }
+
+                    if (!npcs.isEmpty()){
+                        new BukkitRunnable(){
+                            @Override
+                            public void run() {
+                                if (npcs.isEmpty()){
+                                    cancel();
+                                    return;
+                                }
+                                npcs.get(0).spawn(factory.getCenter());
+                                npcs.remove(0);
+                            }
+                        }.runTaskTimer(plugin, 0L, 20L);
+                    }
+
                     factory.restore(plugin, center);
                     Factory.getFactories().add(factory);
                 }

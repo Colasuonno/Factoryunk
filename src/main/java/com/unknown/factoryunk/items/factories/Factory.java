@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.ToString;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
+import net.citizensnpcs.api.trait.Trait;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -236,18 +237,26 @@ public class Factory implements Blueprint {
 
     }
 
-    public void storeNewWorker(){
+    public void storeNewWorker() {
 
-        String path = "factories." + created + ".workers";
         FileConfiguration fileConfiguration = YamlConfig.getConfiguration(localPlugin, "factories");
 
+
         NPC npc = CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, "NPC Worker");
-        npc.data().set(NPC.PLAYER_SKIN_USE_LATEST, false);
-        npc.data().set(NPC.PLAYER_SKIN_TEXTURE_PROPERTIES_METADATA, "yJ0aW1lc3RhbXAiOjE1NjM4OTQwMDcxNDEsInByb2ZpbGVJZCI6IjZmM2ZlYThmNzBhMjQ3NmI5NjUyNjY4OGY4ZGJhNmJkIiwicHJvZmlsZU5hbWUiOiJXb2x0aCIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWRmYzZmMTcyYmI4ZmRjZTJjMmVkY2NlYzJjNWFlYjAyNmJhNTMxMDFhNDJkOWExMzc3MmNkNWY4ZTc1NjM1MSJ9fX0=");
-        npc.data().set(NPC.PLAYER_SKIN_TEXTURE_PROPERTIES_SIGN_METADATA, "kAflQsJdIjh20dvddlTT4fDGPYESfF1S4wZcOvFEesf0oa8UHmHBAGylQ4cUXVl/czphJo3wrE67c1TLfGzO3+qwvJnbuskED76qzGnK2VwkYxIQi77V/vuD4zj1RLsAQ0Gqh6vUEcHuRW7HmFyLPn8llQ76iEZCmbsrgE2/j7G+oDqAivZt6US6iz+MzZS7RWp6/B4yw2lW9vwMQB9BWYbysWgryptzcIKLc844AWFTZceS6jTEJFdddqHmWCfJk4clpEgI0WxQBFsIrA0eG/bWLV4GdUt+fVtKY7sMJgWHP1WkpXWXG5WTp5nDSnLi8hnNf+51sJnsKv5XgP55S9f0Hw4laVNXFNo9B81yXxMgGN/e7nV5rD9lhpzBX31Bp0QSaOESNtXiZ06j1KjPULKVOpynNzeU595m2edn/kk5dC6tVCqSIGFmtCdhwkrWG7WvxXhBhtIbLYRJnaGdyFK/eQYRKhcbu3RfQUGKtKUmCnC36OEL3c4Wdr8nAWsXJYGx/YGBzJvj026d/v1q0jQnIOiwXd5puf2J94yye+ijXdKvVwpKElRPkDZp1rxebnrGIa18eaBomxUoFkb7wI1zIxU8pNVDdS6LvWcsD/dmEa0qhXuJjZLEEg/rvlQcKdVf6YX6oRVAjTl6hniBcwPlkcUn8FUyuK4bv/7hHSg=");
+
+      /*  npc.data().setPersistent(NPC.PLAYER_SKIN_TEXTURE_PROPERTIES_METADATA, "yJ0aW1lc3RhbXAiOjE1NjM4OTQwMDcxNDEsInByb2ZpbGVJZCI6IjZmM2ZlYThmNzBhMjQ3NmI5NjUyNjY4OGY4ZGJhNmJkIiwicHJvZmlsZU5hbWUiOiJXb2x0aCIsInNpZ25hdHVyZVJlcXVpcmVkIjp0cnVlLCJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWRmYzZmMTcyYmI4ZmRjZTJjMmVkY2NlYzJjNWFlYjAyNmJhNTMxMDFhNDJkOWExMzc3MmNkNWY4ZTc1NjM1MSJ9fX0=");
+        npc.data().setPersistent(NPC.PLAYER_SKIN_TEXTURE_PROPERTIES_SIGN_METADATA, "kAflQsJdIjh20dvddlTT4fDGPYESfF1S4wZcOvFEesf0oa8UHmHBAGylQ4cUXVl/czphJo3wrE67c1TLfGzO3+qwvJnbuskED76qzGnK2VwkYxIQi77V/vuD4zj1RLsAQ0Gqh6vUEcHuRW7HmFyLPn8llQ76iEZCmbsrgE2/j7G+oDqAivZt6US6iz+MzZS7RWp6/B4yw2lW9vwMQB9BWYbysWgryptzcIKLc844AWFTZceS6jTEJFdddqHmWCfJk4clpEgI0WxQBFsIrA0eG/bWLV4GdUt+fVtKY7sMJgWHP1WkpXWXG5WTp5nDSnLi8hnNf+51sJnsKv5XgP55S9f0Hw4laVNXFNo9B81yXxMgGN/e7nV5rD9lhpzBX31Bp0QSaOESNtXiZ06j1KjPULKVOpynNzeU595m2edn/kk5dC6tVCqSIGFmtCdhwkrWG7WvxXhBhtIbLYRJnaGdyFK/eQYRKhcbu3RfQUGKtKUmCnC36OEL3c4Wdr8nAWsXJYGx/YGBzJvj026d/v1q0jQnIOiwXd5puf2J94yye+ijXdKvVwpKElRPkDZp1rxebnrGIa18eaBomxUoFkb7wI1zIxU8pNVDdS6LvWcsD/dmEa0qhXuJjZLEEg/rvlQcKdVf6YX6oRVAjTl6hniBcwPlkcUn8FUyuK4bv/7hHSg=");
+        npc.data().setPersistent(NPC.RESPAWN_DELAY_METADATA, 1);*/
         npc.setProtected(true);
 
         npc.spawn(center);
+        String path = "factories." + created + ".workers."+npc.getId()+ ".";
+        fileConfiguration.set(path + "collectedItems", 0);
+        YamlConfig.saveConfig(localPlugin, fileConfiguration, "factories");
+
+        FactoryWorker worker = new FactoryWorker(npc.getId(), 0);
+        workers.add(worker);
+
 
     }
 
@@ -263,7 +272,7 @@ public class Factory implements Blueprint {
 
     }
 
-    private void setState(Plugin plugin, String state){
+    private void setState(Plugin plugin, String state) {
 
         assert state.equalsIgnoreCase("online") || state.equalsIgnoreCase("offline") : "Invalid state";
 
@@ -302,15 +311,15 @@ public class Factory implements Blueprint {
 
     public boolean canDrop() {
 
-        if (this.health == 0 && getLastSchem().equalsIgnoreCase("online")){
+        if (this.health == 0 && getLastSchem().equalsIgnoreCase("online")) {
             System.out.println("UYEUEE'SAJDAIASJIDU  OSAS");
             this.setLastSchem("offline");
             setState(localPlugin, this.lastSchem);
-            YamlConfig.fastModify(localPlugin, "factories", "factories."+created+".lastSchem", "offline");
-        } else if (this.health > 0 && getLastSchem().equalsIgnoreCase("offline")){
+            YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".lastSchem", "offline");
+        } else if (this.health > 0 && getLastSchem().equalsIgnoreCase("offline")) {
             this.setLastSchem("online");
             setState(localPlugin, this.lastSchem);
-            YamlConfig.fastModify(localPlugin, "factories", "factories."+created+".lastSchem", "online");
+            YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".lastSchem", "online");
         }
 
         return this.itemsCollected < this.factoryItemsAmount && this.health > 0 && System.currentTimeMillis() - lastDrop >= delayInMillis;
@@ -360,14 +369,14 @@ public class Factory implements Blueprint {
     }
 
     /**
-     * Gets factory from location
+     * Gets factory from uuid
      *
      * @param location of the factory
      * @return the factory, can be null
      */
     public static Factory fromOwner(UUID uuid) {
         return factories.stream()
-                .filter(factory -> factory.getOwner() != null )
+                .filter(factory -> factory.getOwner() != null)
                 .findAny()
                 .orElse(null);
     }
@@ -377,7 +386,7 @@ public class Factory implements Blueprint {
         YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".admins", new ArrayList<>(this.admins));
     }
 
-    public void repair(int health){
+    public void repair(int health) {
         this.health += health;
     }
 
@@ -439,7 +448,13 @@ public class Factory implements Blueprint {
                 if (item != null) {
                     switch (item.getMetaData()) {
                         case "settings":
-                            //TODO:
+                            player.closeInventory();
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    player.openInventory(factoryWorkers());
+                                }
+                            }.runTaskLater(localPlugin, 1L);
                             break;
                         case "maintenance":
                             player.closeInventory();
@@ -505,32 +520,115 @@ public class Factory implements Blueprint {
             x++;
         }
 
-        inventory.setItem(new OrbInventoryExitItem(
+        inventory.setItem(new OrbInventoryItem(
                 new ItemFall(Material.ARROW, ChatColor.RED + "Back to main inventory", 1, (short) 0, new ArrayList<>())
                 , "back", 9, 3));
 
         inventory.setListener(new OrbInventoryListener() {
             @Override
             public void onClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
-                if (item != null){
-                    switch (item.getMetaData()){
+                if (item != null) {
+                    switch (item.getMetaData()) {
                         case "back":
                             player.closeInventory();
-                            new BukkitRunnable(){
+                            new BukkitRunnable() {
                                 @Override
                                 public void run() {
                                     player.openInventory(getInventory());
                                 }
                             }.runTaskLater(localPlugin, 2L);
+                            break;
                         default:
 
                             if (StringUtils.isInt(item.getMetaData())) {
                                 int value = Integer.parseInt(item.getMetaData());
                                 repair(value);
-                                StringUtils.i(ChatColor.GREEN + "Maintenance done! Current factory health: " + health + "/" + FACTORY_MAX_HEALTH +  " (" + getHealthPercentage() + ")");
+                                StringUtils.i(ChatColor.GREEN + "Maintenance done! Current factory health: " + health + "/" + FACTORY_MAX_HEALTH + " (" + getHealthPercentage() + ")");
                                 player.closeInventory();
                             }
 
+                            break;
+                    }
+                }
+            }
+
+            @Override
+            public void onRightClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
+
+            }
+
+            @Override
+            public void onLeftClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
+
+            }
+
+            @Override
+            public void onClose(Player player, OrbInventory inventory) {
+
+            }
+
+            @Override
+            public void onOpen(InventoryOpenEvent event, Player player, OrbInventory inventory) {
+
+            }
+        });
+
+        return inventory.getInventory();
+    }
+
+    private Inventory factoryWorkers() {
+
+        OrbInventory inventory = new OrbInventory("Factory workers", 36, "workers", true, true);
+
+        int x = 1;
+
+        for (FactoryWorker worker : workers) {
+
+            inventory.setItem(new OrbInventoryItem(
+                    new ItemFall(new ItemFall(new ItemStack(Material.SKULL_ITEM)).name(ChatColor.GREEN + "Factory worker #" + worker.getId()).dur((short) 3).lore(Lists.newArrayList(
+                            ChatColor.GRAY + "Storage: " + ChatColor.GREEN + worker.getCollectedItems() + "/" + worker.getStorageAmount()
+                    ))),
+                    worker.getId() + "", x, 1
+            ));
+            x++;
+        }
+
+        inventory.setItem(new OrbInventoryItem(
+                new ItemFall(Material.WOOL, ChatColor.RED + "Add a factory worker", 1, (short) 5, Lists.newArrayList(
+                        ChatColor.GRAY + "Click to add a factory worker"
+                ))
+                , "add", 1, 4));
+
+        inventory.setItem(new OrbInventoryItem(
+                new ItemFall(Material.ARROW, ChatColor.RED + "Back to main inventory", 1, (short) 0, new ArrayList<>())
+                , "back", 9, 4));
+
+        inventory.setListener(new OrbInventoryListener() {
+            @Override
+            public void onClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
+                if (item != null) {
+                    System.out.println("NULL; " + item.getMetaData());
+                    switch (item.getMetaData()) {
+                        case "back":
+                            player.closeInventory();
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    player.openInventory(getInventory());
+                                }
+                            }.runTaskLater(localPlugin, 2L);
+                            break;
+                        case "add":
+                            System.out.println("aa");
+                            if (workers.size() >= 2){
+                                player.closeInventory();
+                                StringUtils.e("You have reached the maximum amount of factory workers", player);
+                            } else {
+                                storeNewWorker();
+                                StringUtils.i("<e>You have now " + workers.size() + " workers");
+                                player.closeInventory();
+                            }
+                        default:
                             break;
                     }
                 }
