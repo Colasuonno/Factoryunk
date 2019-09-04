@@ -48,18 +48,19 @@ public class Factories {
                     Material material = Material.valueOf(fileConfiguration.getString(path + "material"));
                     int health = fileConfiguration.getInt(path + "lastHealth");
                     FactoryType type = FactoryType.valueOf(fileConfiguration.getString(path + "type"));
+                    int collectedItems = fileConfiguration.getInt(path +"collectedItems");
 
                     Factory factory;
 
                     switch (type) {
                         case LEGENDARY:
-                            factory = new LegendaryFactory(created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new LegendaryFactory(plugin,collectedItems, created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
                         case COMMON:
-                            factory = new CommonFactory(created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new CommonFactory(plugin, collectedItems,  created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
                         default:
-                            factory = new Factory(created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new Factory(plugin, collectedItems, created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
 
                     }

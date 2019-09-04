@@ -51,6 +51,7 @@ public class FactoryUnk extends JavaPlugin {
             if (factory.getLines() != null){
                 factory.getLines().destroy();
             }
+            factory.save(this);
         }
     }
 }

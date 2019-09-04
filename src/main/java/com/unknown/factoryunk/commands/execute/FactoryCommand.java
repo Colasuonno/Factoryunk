@@ -7,12 +7,16 @@ import com.unknown.factoryunk.utils.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 public class FactoryCommand extends FineCommand {
 
     public FactoryCommand() {
         super("factory", "factoryunk.factory", CommandManager.CommandType.PLAYER);
+
     }
+
+
 
     // USAGE /factory admin <player>
 
@@ -41,6 +45,10 @@ public class FactoryCommand extends FineCommand {
                     } else StringUtils.e("Your not the owner of the factory", commandSender);
                 } else StringUtils.e("No factory found! Make sure to be in the factory", commandSender);
             } else StringUtils.e("Player not found", sender);
+
+        } else {
+
+
 
         }
 

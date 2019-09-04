@@ -24,8 +24,8 @@
 
     <repositories>
         <repository>
-            <id>fawe-repo</id>
-            <url>http://ci.athion.net/job/FastAsyncWorldEdit/ws/mvn/</url>
+            <id>everything</id>
+            <url>http://repo.citizensnpcs.co/</url>
         </repository>
     </repositories>
 
@@ -48,16 +48,11 @@
         </dependency>
 
         <dependency>
-            <groupId>worldedit</groupId>
-            <artifactId>we</artifactId>
-            <version>1.0</version>
-        </dependency>
-
-        <!-- FAWE legacy API -->
-        <dependency>
-            <groupId>com.boydti</groupId>
-            <artifactId>fawe-api</artifactId>
-            <version>latest</version>
+            <groupId>net.citizensnpcs</groupId>
+            <artifactId>citizensapi</artifactId>
+            <version>2.0.20-SNAPSHOT</version>
+            <type>jar</type>
+            <scope>compile</scope>
         </dependency>
 
     </dependencies>
