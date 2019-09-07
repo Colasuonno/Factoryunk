@@ -53,19 +53,9 @@ public class PlayerListener implements Listener {
 
                 FactoryItem factoryItem = new FactoryItem(e.getItem());
 
-                Factory factory;
+                Factory factory = new Factory(factoryItem.getMaterial(), FactoryType.COMMON, e.getPlayer().getUniqueId(), new HashSet<>(), Factory.COMMON_FACTORY_MAX_HEALTH);;
                 // Right know all the factory types have the same Factory#build method, TODO: split them
-                switch (factoryItem.getType()) {
-                    case LEGENDARY:
-                        factory = new LegendaryFactory(factoryItem.getMaterial(), factoryItem.getType(), e.getPlayer().getUniqueId(), new HashSet<>(), Factory.FACTORY_MAX_HEALTH);
-                        break;
-                    case COMMON:
-                        factory = new CommonFactory(factoryItem.getMaterial(), factoryItem.getType(), e.getPlayer().getUniqueId(), new HashSet<>(), Factory.FACTORY_MAX_HEALTH);
-                        break;
-                    default:
-                        factory = new Factory(factoryItem.getMaterial(), factoryItem.getType(), e.getPlayer().getUniqueId(), new HashSet<>(), Factory.FACTORY_MAX_HEALTH);
-                        break;
-                }
+
                 factory.build(target.getRelative(BlockFace.UP), true, plugin);
             } else if (e.getClickedBlock() != null) {
 

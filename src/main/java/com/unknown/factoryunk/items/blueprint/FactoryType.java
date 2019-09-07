@@ -1,5 +1,6 @@
 package com.unknown.factoryunk.items.blueprint;
 
+import com.unknown.factoryunk.items.factories.Factory;
 import lombok.Getter;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
@@ -13,13 +14,15 @@ import java.util.List;
 public enum FactoryType {
 
 
-    COMMON(Material.COAL, Material.IRON_INGOT),
-    RARE(Material.GOLD_INGOT, Material.REDSTONE),
-    LEGENDARY(Material.EMERALD, Material.DIAMOND);
+    COMMON(Factory.COMMON_FACTORY_MAX_HEALTH, Material.COAL, Material.IRON_INGOT),
+    RARE(Factory.RARE_FACTORY_MAX_HEALTH, Material.GOLD_INGOT, Material.REDSTONE),
+    LEGENDARY(Factory.LEGENDARY_FACTORY_MAX_HEALTH, Material.EMERALD, Material.DIAMOND);
 
     @Getter private List<Material> materials;
+    @Getter private int cost;
 
-    FactoryType(Material... materials) {
+    FactoryType(int cost, Material... materials) {
+        this.cost = cost;
         this.materials = Arrays.asList(materials);
     }
 

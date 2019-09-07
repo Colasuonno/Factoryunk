@@ -13,7 +13,7 @@ public class SchematicLoader {
     public static Schematic loadSchematic(Plugin plugin, String name) {
         if (!name.endsWith(".schematic"))
             name = name + ".schematic";
-        File file = new File(plugin.getDataFolder().getAbsolutePath() + "/schematics/online.schematic");
+        File file = new File(plugin.getDataFolder().getAbsolutePath() + "/schematics/" + name);
         if (!file.exists())
             return null;
         try {

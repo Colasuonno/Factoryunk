@@ -4,6 +4,7 @@ import com.sun.org.apache.regexp.internal.RE;
 import com.unknown.factoryunk.items.blueprint.FactoryType;
 import com.unknown.factoryunk.items.factories.types.CommonFactory;
 import com.unknown.factoryunk.items.factories.types.LegendaryFactory;
+import com.unknown.factoryunk.items.factories.types.RareFactory;
 import com.unknown.factoryunk.items.factories.workers.FactoryWorker;
 import com.unknown.factoryunk.utils.LocationUtil;
 import com.unknown.factoryunk.utils.YamlConfig;
@@ -53,18 +54,22 @@ public class Factories {
                     int health = fileConfiguration.getInt(path + "lastHealth");
                     FactoryType type = FactoryType.valueOf(fileConfiguration.getString(path + "type"));
                     int collectedItems = fileConfiguration.getInt(path +"collectedItems");
+                    String lastSchem = fileConfiguration.getString(path + "lastSchem");
 
                     Factory factory;
 
                     switch (type) {
                         case LEGENDARY:
-                            factory = new LegendaryFactory(plugin,collectedItems, created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new LegendaryFactory(plugin, lastSchem, collectedItems, created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            break;
+                        case RARE:
+                            factory = new RareFactory(plugin, lastSchem, collectedItems,  created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
                         case COMMON:
-                            factory = new CommonFactory(plugin, collectedItems,  created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new CommonFactory(plugin, lastSchem, collectedItems,  created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
                         default:
-                            factory = new Factory(plugin, collectedItems, created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
+                            factory = new Factory(plugin, lastSchem, collectedItems, created, owner, placed, new HashSet<>(), material, health, type, center, pos1, pos2);
                             break;
 
                     }
@@ -113,6 +118,23 @@ public class Factories {
         }.runTaskLater(plugin, 10L);
     }
 
+    /**
+     * Remove a factory from date
+     * @param created date
+     */
+    public static void createdRemove(long created){
+        for (Factory cloned : new ArrayList<>(Factory.getFactories())){
+            if (cloned.getCreated() == created) {
+                Factory.getFactories().remove(cloned);
+            }
+        }
+    }
+
+    /**
+     * Checks if a location is too close to another
+     * @param location to check
+     * @return if it is too close
+     */
     public boolean tooClose(Location location){
         for (Factory factory : Factory.getFactories()){
 

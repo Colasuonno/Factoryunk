@@ -11,6 +11,7 @@ import com.unknown.factoryunk.items.blueprint.Blueprint;
 import com.unknown.factoryunk.items.blueprint.FactoryType;
 import com.unknown.factoryunk.items.factories.types.CommonFactory;
 import com.unknown.factoryunk.items.factories.types.LegendaryFactory;
+import com.unknown.factoryunk.items.factories.types.RareFactory;
 import com.unknown.factoryunk.items.factories.workers.FactoryWorker;
 import com.unknown.factoryunk.utils.*;
 import lombok.Data;
@@ -67,22 +68,27 @@ public class Factory implements Blueprint {
     // Econ infos
     private final int unitCost = 1;
 
-    public static final int FACTORY_MAX_HEALTH = 200;
+    // Constants
+    public static final int COMMON_FACTORY_MAX_HEALTH = 100;
+    public static final int RARE_FACTORY_MAX_HEALTH = 200;
+    public static final int LEGENDARY_FACTORY_MAX_HEALTH = 400;
+
 
     /*
         Used to cache all the factories
      */
     @Getter
-    private static Set<Factory> factories = new HashSet<>();
+    private static List<Factory> factories = new ArrayList<>();
 
     /**
      * Restore constructor
      *
      * @see #Factory(Material, FactoryType, UUID, Set, int)
      */
-    public Factory(Plugin plugin, int itemsCollected, long created, UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
+    public Factory(Plugin plugin, String lastSchem, int itemsCollected, long created, UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
         this.localPlugin = plugin;
         this.itemsCollected = itemsCollected;
+        this.lastSchem = lastSchem;
         this.owner = owner;
         this.created = created;
         this.blockLocation = blockLocation;
@@ -103,26 +109,32 @@ public class Factory implements Blueprint {
      * @param type     of the factory(blueprint)
      * @param owner    who created the factory
      * @param admins   they can access to the factory
-     * @throws FactoryException if the material given is not valid
      */
     public Factory(Material material, FactoryType type, UUID owner, Set<UUID> admins, int health) {
-        if (!type.isValid(material))
-            throw new FactoryException(material + " is not a valid type for " + type.name() + " Factory");
         this.created = System.currentTimeMillis();
         this.material = material;
         this.type = type;
         this.owner = owner;
         this.admins = admins;
         this.health = health;
+        this.lastSchem = "online";
     }
 
     public Factory(Material material, FactoryType type) {
         this(material, type, null, new HashSet<>(), -1);
     }
 
+    /**
+     *  Needed Empty Constructor
+     */
     public Factory() {
     }
 
+    /**
+     * Restore the holograms of the factory
+     * @param plugin instance
+     * @param center of the factory
+     */
     public void restore(Plugin plugin, Location center) {
 
         HologramLines hologramLines = new HologramLines(
@@ -136,6 +148,12 @@ public class Factory implements Blueprint {
         this.lines = hologramLines;
     }
 
+    /**
+     * CREATE - method, to build and store the factory
+     * @param block location placed
+     * @param store if you want to store the factory
+     * @param plugin instance
+     */
     public void build(Block block, boolean store, Plugin plugin) {
         if (owner == null) throw new FactoryException("Owner cannot be null");
 
@@ -210,7 +228,7 @@ public class Factory implements Blueprint {
             fileConfiguration.set(path + "pos1", LocationUtil.convertToString(pos1));
             fileConfiguration.set(path + "pos2", LocationUtil.convertToString(pos2));
             fileConfiguration.set(path + "material", material.name());
-            fileConfiguration.set(path + "lastHealth", FACTORY_MAX_HEALTH);
+            fileConfiguration.set(path + "lastHealth", COMMON_FACTORY_MAX_HEALTH);
             fileConfiguration.set(path + "type", type.name());
             fileConfiguration.set(path + "lastSchem", "online");
             fileConfiguration.set(path + "collectedItems", itemsCollected);
@@ -219,7 +237,7 @@ public class Factory implements Blueprint {
             YamlConfig.saveConfig(plugin, fileConfiguration, "factories");
         }
 
-        this.health = FACTORY_MAX_HEALTH;
+        this.health = COMMON_FACTORY_MAX_HEALTH;
         HologramLines hologramLines = new HologramLines(
                 ChatColor.GOLD + "Factory " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase()),
                 "QUERY -- <" + material.toString() + "> -- QUERY",
@@ -237,6 +255,9 @@ public class Factory implements Blueprint {
 
     }
 
+    /**
+     * Store new worker, bypassing the MAX=2, can be called anywhere
+     */
     public void storeNewWorker() {
 
         FileConfiguration fileConfiguration = YamlConfig.getConfiguration(localPlugin, "factories");
@@ -250,7 +271,7 @@ public class Factory implements Blueprint {
         npc.setProtected(true);
 
         npc.spawn(center);
-        String path = "factories." + created + ".workers."+npc.getId()+ ".";
+        String path = "factories." + created + ".workers." + npc.getId() + ".";
         fileConfiguration.set(path + "collectedItems", 0);
         YamlConfig.saveConfig(localPlugin, fileConfiguration, "factories");
 
@@ -260,6 +281,10 @@ public class Factory implements Blueprint {
 
     }
 
+    /**
+     * Save the last health,collectedItems into the config
+     * @param plugin
+     */
     public void save(Plugin plugin) {
 
         String path = "factories." + created + ".";
@@ -272,63 +297,124 @@ public class Factory implements Blueprint {
 
     }
 
-    private void setState(Plugin plugin, String state) {
+    /**
+     * Modify the state and the building of the factory
+     * @param plugin instance
+     * @param old old state
+     * @param state changed stated
+     * @throws FactoryException if the old and the state are the same
+     */
+    private void setState(Plugin plugin, String old, String state) {
 
-        assert state.equalsIgnoreCase("online") || state.equalsIgnoreCase("offline") : "Invalid state";
+        if (old.equalsIgnoreCase(state)) throw new FactoryException("old cannot be the same to state");
 
         Location center = blockLocation;
 
+        Schematic oldSchem = SchematicLoader.loadSchematic(plugin, old);
         Schematic schematic = SchematicLoader.loadSchematic(plugin, state);
-        List<Location> locations = new ArrayList<>();
-
-        for (int x = 0; x < schematic.getWidth(); ++x) {
-            for (int y = 0; y < schematic.getHeight(); ++y) {
-                for (int z = 0; z < schematic.getLength(); ++z) {
+        System.out.println("SCHEM: " + state);
+        System.out.println("Loading " + schematic.getName() + " - schem");
+        for (int x = 0; x < oldSchem.getWidth(); ++x) {
+            for (int y = 0; y < oldSchem.getHeight(); ++y) {
+                for (int z = 0; z < oldSchem.getLength(); ++z) {
                     Location location = center.clone().add(x, y, z);
-                    locations.add(location);
                     Block replace = location.getBlock();
                     replace.setType(Material.AIR);
                 }
             }
         }
 
-        for (int x = 0; x < schematic.getWidth(); ++x) {
-            for (int y = 0; y < schematic.getHeight(); ++y) {
-                for (int z = 0; z < schematic.getLength(); ++z) {
-                    int index = y * schematic.getWidth() * schematic.getLength() + z * schematic.getWidth() + x;
-                    int b = schematic.getBlocks()[index] & 0xFF;//make the block unsigned,
-                    // so that blocks with an id over 127, like quartz and emerald, can be pasted
-                    Material m = Material.getMaterial(b);
-                    Location location = center.clone().add(x, y, z);
-                    locations.add(location);
-                    Block replace = location.getBlock();
-                    replace.setType(m);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (int x = 0; x < schematic.getWidth(); ++x) {
+                    for (int y = 0; y < schematic.getHeight(); ++y) {
+                        for (int z = 0; z < schematic.getLength(); ++z) {
+                            int index = y * schematic.getWidth() * schematic.getLength() + z * schematic.getWidth() + x;
+                            int b = schematic.getBlocks()[index] & 0xFF;//make the block unsigned,
+                            // so that blocks with an id over 127, like quartz and emerald, can be pasted
+                            Material m = Material.getMaterial(b);
+                            Location location = center.clone().add(x, y, z);
+                            Block replace = location.getBlock();
+                            replace.setType(m);
+                        }
+                    }
                 }
+
             }
+        }.runTaskLater(plugin, 5L);
+    }
+
+    /**
+     * Get max health by factory param
+     * @param type of the factory
+     * @return the max health
+     */
+    private int getMaxHealth(FactoryType type) {
+        switch (type) {
+            case RARE:
+                return RARE_FACTORY_MAX_HEALTH;
+            case COMMON:
+                return COMMON_FACTORY_MAX_HEALTH;
+            case LEGENDARY:
+                return LEGENDARY_FACTORY_MAX_HEALTH;
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * Get max health by factory type
+     * @return the max health
+     */
+    public int getMaxHealth() {
+
+        switch (type) {
+            case RARE:
+                return RARE_FACTORY_MAX_HEALTH;
+            case COMMON:
+                return COMMON_FACTORY_MAX_HEALTH;
+            case LEGENDARY:
+                return LEGENDARY_FACTORY_MAX_HEALTH;
+            default:
+                return -1;
         }
 
     }
 
+    /**
+     * Check is a factory is not full, and can collect an item
+     * @return if a factory is ready to collect an item
+     */
     public boolean canDrop() {
 
+        String lastSchem = getLastSchem();
+
         if (this.health == 0 && getLastSchem().equalsIgnoreCase("online")) {
-            System.out.println("UYEUEE'SAJDAIASJIDU  OSAS");
             this.setLastSchem("offline");
-            setState(localPlugin, this.lastSchem);
+            setState(localPlugin, lastSchem, this.lastSchem);
             YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".lastSchem", "offline");
         } else if (this.health > 0 && getLastSchem().equalsIgnoreCase("offline")) {
             this.setLastSchem("online");
-            setState(localPlugin, this.lastSchem);
+            setState(localPlugin, lastSchem, this.lastSchem);
             YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".lastSchem", "online");
         }
 
         return this.itemsCollected < this.factoryItemsAmount && this.health > 0 && System.currentTimeMillis() - lastDrop >= delayInMillis;
     }
 
+    /**
+     * If the health is greater than 0 it will reduce the health of param given
+     * @param amount reduce amount
+     */
     public void reduceHealth(int amount) {
         if (health > 0) this.health -= amount;
     }
 
+    /**
+     * Collect an item bypassing any limits
+     * @param amount of item to collect
+     */
     public void collect(int amount) {
         this.itemsCollected += amount;
     }
@@ -349,10 +435,14 @@ public class Factory implements Blueprint {
         return this.type;
     }
 
+    /**
+     * Gets the current health %
+     * @return
+     */
     public String getHealthPercentage() {
         // 200 : 100 = health : x
         System.out.println(health);
-        return ((health * 100) / 200) + "%";
+        return ((health * 100) / getMaxHealth()) + "%";
     }
 
     /**
@@ -371,9 +461,10 @@ public class Factory implements Blueprint {
     /**
      * Gets factory from uuid
      *
-     * @param location of the factory
+     * @param uuid of the owner
      * @return the factory, can be null
      */
+    @Deprecated
     public static Factory fromOwner(UUID uuid) {
         return factories.stream()
                 .filter(factory -> factory.getOwner() != null)
@@ -381,15 +472,115 @@ public class Factory implements Blueprint {
                 .orElse(null);
     }
 
+    /**
+     * Add factory admin (perms)
+     * @param uuid of the player
+     */
     public void addAdmin(UUID uuid) {
         this.admins.add(uuid);
         YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".admins", new ArrayList<>(this.admins));
     }
 
+    /**
+     * Repair the factory by param given
+     * WARNING: No secure check is made to this function,
+     * you can destroy some factory from over sized repair amount
+     * @param health amount of health to repair
+     */
     public void repair(int health) {
         this.health += health;
     }
 
+
+    /**
+     * Called every time a factory find an item, should be different for each factory type
+     */
+    public void reward() {
+        //EMPTY FUNCTION
+    }
+
+
+    /**
+     * Upgrade the factory to the next tier
+     *
+     * @return if the upgrade was successful
+     */
+    public boolean upgradeFactory() {
+
+        boolean max = nextStringTier().equalsIgnoreCase("Max");
+
+        if (max) return false;
+        else {
+
+            FactoryType newz = nextTier();
+            if (newz != null) {
+                Factory newFactoryInstance;
+
+                switch (newz) {
+                    case LEGENDARY:
+                        newFactoryInstance = new LegendaryFactory(localPlugin, lastSchem, itemsCollected, created, owner, blockLocation, new HashSet<>(), material, getMaxHealth(newz), newz, center, pos1, pos2);
+                        break;
+                    case RARE:
+                        newFactoryInstance = new RareFactory(localPlugin, lastSchem, itemsCollected, created, owner, blockLocation, new HashSet<>(), material, getMaxHealth(newz), newz, center, pos1, pos2);
+                        break;
+                    default:
+                        return false;
+
+                }
+
+                lines.destroy();
+                YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".type", newz.toString());
+                Factories.createdRemove(created);
+                factories.add(newFactoryInstance);
+                newFactoryInstance.restore(localPlugin, center);
+
+                return true;
+            } else return false;
+
+        }
+
+    }
+
+    /**
+     * Gets the next factory tier
+     * @return the next factory tier
+     */
+    private FactoryType nextTier() {
+        switch (type) {
+            case RARE:
+                return FactoryType.LEGENDARY;
+            case COMMON:
+                return FactoryType.RARE;
+            case LEGENDARY:
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Gets the next String Factory tier
+     * @return the next factory tier, if null returns 'Max'
+     */
+    private String nextStringTier() {
+        FactoryType type = nextTier();
+        if (type == null) return "Max";
+        else return StringUtils.firstUpper(type.name().toLowerCase());
+    }
+
+
+    /*
+
+         Factory Inventory section
+
+        INFO: All inventories are unique and rebuild each time, if you want to keep them in cache
+        just put false to destroy field in OrbInventory
+
+     */
+
+    /**
+     * Gets the main factory inventory
+     * @return the main inventory
+     */
     public Inventory getInventory() {
 
 
@@ -410,6 +601,19 @@ public class Factory implements Blueprint {
                                 "",
                                 ChatColor.RED + "Click to withraw all the collected items storable in your inventory"
                         )), "infos", 5, 2
+        ));
+
+        boolean max = nextStringTier().equalsIgnoreCase("Max");
+
+        inventory.setItem(new OrbInventoryItem(
+                new ItemFall(new ItemStack(Material.CACTUS))
+                        .name(ChatColor.GREEN + "Upgrade your factory")
+                        .lore(Lists.newArrayList(
+                                ChatColor.GRAY + "Upgrade to " + ChatColor.AQUA + nextTier(),
+                                ChatColor.GRAY + "Cost: " + ChatColor.AQUA + (max ? "N/D" : "$" + nextTier().getCost()),
+                                "",
+                                ChatColor.GRAY + "Click to instant upgrade your factory"
+                        )), "upgrade", 1, 3
         ));
 
      /*   inventory.setItem(new OrbInventoryItem(
@@ -466,6 +670,13 @@ public class Factory implements Blueprint {
                                 }
                             }.runTaskLater(localPlugin, 1L);
                             break;
+                        case "upgrade":
+                            player.closeInventory();
+                            if (upgradeFactory()) {
+                                StringUtils.i("<e>Factory upgraded successfully", player);
+                            } else {
+                                StringUtils.e("You cannot upgrade your factory anymore", player);
+                            }
                         default:
                             break;
                     }
@@ -496,6 +707,11 @@ public class Factory implements Blueprint {
         return inventory.getInventory();
     }
 
+
+    /**
+     * Gets the maintenance inventory of the factory
+     * @return
+     */
     private Inventory maintenance() {
 
         int[] usable = new int[]{20, 50, 100, 150, 200};
@@ -504,10 +720,11 @@ public class Factory implements Blueprint {
 
         int x = 3;
 
+        int maxHealth = getMaxHealth();
+
         for (int num : usable) {
 
-
-            int effective = this.health + num > FACTORY_MAX_HEALTH ? FACTORY_MAX_HEALTH - this.health : num;
+            int effective = this.health + num > maxHealth ? maxHealth - this.health : num;
 
             inventory.setItem(new OrbInventoryItem(
                     new ItemFall(new ItemFall(new ItemStack(Material.WOOL)).name(ChatColor.GOLD + "+" + (num / 2) + "% Repair").dur((short) 1).lore(Lists.newArrayList(
@@ -543,7 +760,7 @@ public class Factory implements Blueprint {
                             if (StringUtils.isInt(item.getMetaData())) {
                                 int value = Integer.parseInt(item.getMetaData());
                                 repair(value);
-                                StringUtils.i(ChatColor.GREEN + "Maintenance done! Current factory health: " + health + "/" + FACTORY_MAX_HEALTH + " (" + getHealthPercentage() + ")");
+                                StringUtils.i(ChatColor.GREEN + "Maintenance done! Current factory health: " + health + "/" + getMaxHealth() + " (" + getHealthPercentage() + ")", player);
                                 player.closeInventory();
                             }
 
@@ -576,6 +793,10 @@ public class Factory implements Blueprint {
         return inventory.getInventory();
     }
 
+    /**
+     * Gets the factory workers inventory
+     * @return
+     */
     private Inventory factoryWorkers() {
 
         OrbInventory inventory = new OrbInventory("Factory workers", 36, "workers", true, true);
@@ -620,12 +841,12 @@ public class Factory implements Blueprint {
                             break;
                         case "add":
                             System.out.println("aa");
-                            if (workers.size() >= 2){
+                            if (workers.size() >= 2) {
                                 player.closeInventory();
                                 StringUtils.e("You have reached the maximum amount of factory workers", player);
                             } else {
                                 storeNewWorker();
-                                StringUtils.i("<e>You have now " + workers.size() + " workers");
+                                StringUtils.i("<e>You have now " + workers.size() + " workers", player);
                                 player.closeInventory();
                             }
                         default:
@@ -657,12 +878,4 @@ public class Factory implements Blueprint {
 
         return inventory.getInventory();
     }
-
-    /**
-     * Called every time a factory find an item, should be different for each factory type
-     */
-    public void reward() {
-        //EMPTY FUNCTION
-    }
-
 }

@@ -1,6 +1,5 @@
 package com.unknown.factoryunk.items.factories.types;
 
-import com.unknown.factoryunk.exceptions.FactoryException;
 import com.unknown.factoryunk.items.blueprint.FactoryType;
 import com.unknown.factoryunk.items.factories.Factory;
 import org.bukkit.ChatColor;
@@ -12,14 +11,14 @@ import org.bukkit.plugin.Plugin;
 import java.util.Set;
 import java.util.UUID;
 
-public class LegendaryFactory extends Factory {
+public class RareFactory  extends Factory {
 
-    public LegendaryFactory(Plugin plugin, String lastSchem, int itemsCollected, long created, UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
+    public RareFactory(Plugin plugin, String lastSchem, int itemsCollected, long created, UUID owner, Location blockLocation, Set<UUID> admins, Material material, int health, FactoryType type, Location center, Location pos1, Location pos2) {
         super(plugin, lastSchem, itemsCollected, created, owner, blockLocation, admins, material, health, type, center, pos1, pos2);
-        setDelayInMillis(3000L);
+        setDelayInMillis(4000L);
     }
 
-    public LegendaryFactory(Material material, FactoryType type, UUID owner, Set<UUID> admins, int health) {
+    public RareFactory(Material material, FactoryType type, UUID owner, Set<UUID> admins, int health) {
         super(material, type, owner, admins, health);
     }
 

@@ -17,16 +17,19 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class FactoryUnk extends JavaPlugin {
 
-    @Getter private CommandManager commandManager;
-    @Getter private Factories factories;
+    @Getter
+    private CommandManager commandManager;
+    @Getter
+    private Factories factories;
 
     @Override
     public void onEnable() {
 
-        for (World worlds : Bukkit.getWorlds()){
-            for (Entity tileEntity : worlds.getEntities()){
-                if (tileEntity instanceof ArmorStand){
-                    if (tileEntity.hasMetadata("destroy$load")) tileEntity.remove();
+        // Assuming we want to remove all of them, load: POSTWORLD
+        for (World worlds : Bukkit.getWorlds()) {
+            for (Entity tileEntity : worlds.getEntities()) {
+                if (tileEntity instanceof ArmorStand) {
+                    tileEntity.remove();
                 }
             }
         }
@@ -47,8 +50,8 @@ public class FactoryUnk extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        for (Factory factory : Factory.getFactories()){
-            if (factory.getLines() != null){
+        for (Factory factory : Factory.getFactories()) {
+            if (factory.getLines() != null) {
                 factory.getLines().destroy();
             }
             factory.save(this);
