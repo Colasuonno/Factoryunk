@@ -153,7 +153,7 @@ public class Factories {
         for (Factory factory : Factory.getFactories()) {
 
             if (factory.getCuboid() != null) {
-                if (factory.getCuboid().getLowerNE().distance(location) < 30) {
+                if (location.getWorld().getName().equalsIgnoreCase(factory.getCenter().getWorld().getName()) && factory.getCuboid().getLowerNE().distance(location) < 30) {
                     return true;
                 }
             }
