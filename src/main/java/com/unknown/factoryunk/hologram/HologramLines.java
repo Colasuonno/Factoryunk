@@ -52,6 +52,12 @@ import java.util.List;
         return entities;
     }
 
+    /**
+     * Modify an hologram
+     * @param contains the string contained in the string
+     * @param replaceValue new text value
+     * @param classz class of the entity that we want to modify
+     */
     public void modify(String contains, String replaceValue, Class<? extends Entity> classz){
         for (Entity entity : entities){
             if (classz.isAssignableFrom(entity.getClass())){
@@ -60,6 +66,9 @@ import java.util.List;
         }
     }
 
+    /**
+     * Destroy all the holograms
+     */
     public void destroy(){
 
         for (Entity entity : entities){

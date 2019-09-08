@@ -3,5 +3,6 @@ version: 0.1-ALPHA
 main: com.unknown.factoryunk.FactoryUnk
 description: Factory builder
 load: POSTWORLD
-depend: ["Factions"]
+depend: ["Factions", "Citizens"]
+softdepend: ["Vault"]
 authors: ["Unknown"]

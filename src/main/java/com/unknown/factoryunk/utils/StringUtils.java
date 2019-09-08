@@ -76,15 +76,6 @@ public class StringUtils {
         return Integer.parseInt(builder.toString());
     }
 
-    public static void main(String[] args) {
-
-        String test = "ciao mi chiamo ciao";
-
-        System.out.println(getIndexes(test, "ciao ", "�"));
-
-    }
-
-
     public static boolean containsMultiple(String input, String contains){
         if (!input.contains(contains)) return false;
         List<List<Integer>> indexes = getIndexes(input, contains);

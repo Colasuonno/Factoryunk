@@ -24,7 +24,6 @@ public class CommonFactory extends Factory {
 
     @Override
     public void reward(){
-
         setLastDrop(System.currentTimeMillis());
         reduceHealth(1);
         collect(1);

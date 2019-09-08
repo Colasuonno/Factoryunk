@@ -1,6 +1,7 @@
 package com.unknown.factoryunk.items.factories;
 
 import com.google.common.collect.Lists;
+import com.unknown.factoryunk.FactoryUnk;
 import com.unknown.factoryunk.exceptions.FactoryException;
 import com.unknown.factoryunk.gui.OrbInventory;
 import com.unknown.factoryunk.gui.OrbInventoryExitItem;
@@ -20,11 +21,13 @@ import lombok.ToString;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.Trait;
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -125,33 +128,38 @@ public class Factory implements Blueprint {
     }
 
     /**
-     *  Needed Empty Constructor
+     * Needed Empty Constructor
      */
     public Factory() {
     }
 
     /**
      * Restore the holograms of the factory
+     *
      * @param plugin instance
      * @param center of the factory
      */
     public void restore(Plugin plugin, Location center) {
 
+
+
         HologramLines hologramLines = new HologramLines(
-                ChatColor.GOLD + "Factory " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase()),
-                "QUERY -- <" + material.name() + "> -- QUERY",
-                ChatColor.GREEN + "Health: " + getHealthPercentage()
+                ChatColor.GOLD + "Factory " + ChatColor.AQUA + (isMoneyReward() ? "Money" : StringUtils.firstUpper(material.name().toLowerCase())),
+                "QUERY -- <" + (isMoneyReward() ? Material.PAPER.toString() : material.toString()) + "> -- QUERY",
+                health == 0 ? ChatColor.GRAY + "Status: " + ChatColor.RED + "Broken" : ChatColor.GREEN + "Health: " + getHealthPercentage()
         );
 
         hologramLines.show(plugin, center, 0.4D);
 
         this.lines = hologramLines;
+
     }
 
     /**
      * CREATE - method, to build and store the factory
-     * @param block location placed
-     * @param store if you want to store the factory
+     *
+     * @param block  location placed
+     * @param store  if you want to store the factory
      * @param plugin instance
      */
     public void build(Block block, boolean store, Plugin plugin) {
@@ -237,10 +245,11 @@ public class Factory implements Blueprint {
             YamlConfig.saveConfig(plugin, fileConfiguration, "factories");
         }
 
+        this.center = center;
         this.health = COMMON_FACTORY_MAX_HEALTH;
         HologramLines hologramLines = new HologramLines(
-                ChatColor.GOLD + "Factory " + ChatColor.AQUA + StringUtils.firstUpper(material.name().toLowerCase()),
-                "QUERY -- <" + material.toString() + "> -- QUERY",
+                ChatColor.GOLD + "Factory " + ChatColor.AQUA + (isMoneyReward() ? "Money" : StringUtils.firstUpper(material.name().toLowerCase())),
+                "QUERY -- <" + (isMoneyReward() ? Material.PAPER.toString() : material.toString()) + "> -- QUERY",
                 ChatColor.GREEN + "Health: " + getHealthPercentage()
         );
 
@@ -253,6 +262,15 @@ public class Factory implements Blueprint {
         factories.add(this);
 
 
+    }
+
+    /**
+     * Checks if a player can access the factory
+     * @param uuid of the player
+     * @return if he's allowed
+     */
+    public boolean isAllowed(UUID uuid){
+        return owner.equals(uuid) || admins.contains(uuid);
     }
 
     /**
@@ -283,6 +301,7 @@ public class Factory implements Blueprint {
 
     /**
      * Save the last health,collectedItems into the config
+     *
      * @param plugin
      */
     public void save(Plugin plugin) {
@@ -293,15 +312,52 @@ public class Factory implements Blueprint {
         fileConfiguration.set(path + "lastHealth", this.health);
         fileConfiguration.set(path + "collectedItems", this.itemsCollected);
 
+        for (FactoryWorker worker : workers) {
+            fileConfiguration.set(path + "workers." + worker.getNPC().getId() + ".collectedItems", worker.getCollectedItems());
+        }
+
         YamlConfig.saveConfig(plugin, fileConfiguration, "factories");
 
     }
 
     /**
+     * Gets the sum of all the factory workers item
+     * @return the total amount of factory workers collected items
+     */
+    public int getWorkersItemsAmount() {
+        int amount = 0;
+        for (FactoryWorker worker : workers) {
+            amount += worker.getCollectedItems();
+        }
+        return amount;
+    }
+
+    /**
+     * ABSOLUTE remove a factory, from game and storage, (Holos and npcs)
+     */
+    public void destroy(){
+
+        for (Block block : this.cuboid){
+            block.setType(Material.AIR);
+        }
+
+        for (FactoryWorker worker : workers){
+            worker.getNPC().despawn();
+            worker.getNPC().destroy();
+        }
+
+        lines.destroy();
+        YamlConfig.fastModify(localPlugin, "factories", "factories."+created, null);
+        Factories.createdRemove(created);
+
+    }
+
+    /**
      * Modify the state and the building of the factory
+     *
      * @param plugin instance
-     * @param old old state
-     * @param state changed stated
+     * @param old    old state
+     * @param state  changed stated
      * @throws FactoryException if the old and the state are the same
      */
     private void setState(Plugin plugin, String old, String state) {
@@ -312,8 +368,6 @@ public class Factory implements Blueprint {
 
         Schematic oldSchem = SchematicLoader.loadSchematic(plugin, old);
         Schematic schematic = SchematicLoader.loadSchematic(plugin, state);
-        System.out.println("SCHEM: " + state);
-        System.out.println("Loading " + schematic.getName() + " - schem");
         for (int x = 0; x < oldSchem.getWidth(); ++x) {
             for (int y = 0; y < oldSchem.getHeight(); ++y) {
                 for (int z = 0; z < oldSchem.getLength(); ++z) {
@@ -327,6 +381,13 @@ public class Factory implements Blueprint {
         new BukkitRunnable() {
             @Override
             public void run() {
+
+                if (state.equalsIgnoreCase("offline")){
+                    lines.modify("Health", ChatColor.GRAY + "Status: " + ChatColor.RED + "Broken", ArmorStand.class);
+                } else {
+                    lines.modify("Status", ChatColor.GREEN + "Health: " + getHealthPercentage(), ArmorStand.class);
+                }
+
                 for (int x = 0; x < schematic.getWidth(); ++x) {
                     for (int y = 0; y < schematic.getHeight(); ++y) {
                         for (int z = 0; z < schematic.getLength(); ++z) {
@@ -347,6 +408,7 @@ public class Factory implements Blueprint {
 
     /**
      * Get max health by factory param
+     *
      * @param type of the factory
      * @return the max health
      */
@@ -365,6 +427,7 @@ public class Factory implements Blueprint {
 
     /**
      * Get max health by factory type
+     *
      * @return the max health
      */
     public int getMaxHealth() {
@@ -384,6 +447,7 @@ public class Factory implements Blueprint {
 
     /**
      * Check is a factory is not full, and can collect an item
+     *
      * @return if a factory is ready to collect an item
      */
     public boolean canDrop() {
@@ -405,6 +469,7 @@ public class Factory implements Blueprint {
 
     /**
      * If the health is greater than 0 it will reduce the health of param given
+     *
      * @param amount reduce amount
      */
     public void reduceHealth(int amount) {
@@ -413,6 +478,7 @@ public class Factory implements Blueprint {
 
     /**
      * Collect an item bypassing any limits
+     *
      * @param amount of item to collect
      */
     public void collect(int amount) {
@@ -422,7 +488,7 @@ public class Factory implements Blueprint {
     @Override
     public ItemStack generateBluePrint() {
         return new ItemFall(new ItemStack(Material.PAPER))
-                .name(ChatColor.BLUE + "Blueprint " + ChatColor.GRAY + "(" + StringUtils.firstUpper(getReward().getType().name().toLowerCase()) + ")");
+                .name(ChatColor.BLUE + "Blueprint " + ChatColor.GRAY + "(" + (isMoneyReward() ? "Money" : StringUtils.firstUpper(getReward().getType().name().toLowerCase())) + ")");
     }
 
     @Override
@@ -435,13 +501,17 @@ public class Factory implements Blueprint {
         return this.type;
     }
 
+    public boolean isMoneyReward() {
+        return material.equals(Material.RECORD_10);
+    }
+
     /**
      * Gets the current health %
+     *
      * @return
      */
     public String getHealthPercentage() {
         // 200 : 100 = health : x
-        System.out.println(health);
         return ((health * 100) / getMaxHealth()) + "%";
     }
 
@@ -474,17 +544,23 @@ public class Factory implements Blueprint {
 
     /**
      * Add factory admin (perms)
+     *
      * @param uuid of the player
      */
     public void addAdmin(UUID uuid) {
         this.admins.add(uuid);
-        YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".admins", new ArrayList<>(this.admins));
+        List<String> result = new ArrayList<>();
+        for (UUID admins : admins){
+            result.add(admins.toString());
+        }
+        YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".admins", result);
     }
 
     /**
      * Repair the factory by param given
      * WARNING: No secure check is made to this function,
      * you can destroy some factory from over sized repair amount
+     *
      * @param health amount of health to repair
      */
     public void repair(int health) {
@@ -528,6 +604,9 @@ public class Factory implements Blueprint {
 
                 }
 
+                newFactoryInstance.setWorkers(workers);
+                newFactoryInstance.setAdmins(admins);
+
                 lines.destroy();
                 YamlConfig.fastModify(localPlugin, "factories", "factories." + created + ".type", newz.toString());
                 Factories.createdRemove(created);
@@ -543,6 +622,7 @@ public class Factory implements Blueprint {
 
     /**
      * Gets the next factory tier
+     *
      * @return the next factory tier
      */
     private FactoryType nextTier() {
@@ -559,6 +639,7 @@ public class Factory implements Blueprint {
 
     /**
      * Gets the next String Factory tier
+     *
      * @return the next factory tier, if null returns 'Max'
      */
     private String nextStringTier() {
@@ -579,6 +660,7 @@ public class Factory implements Blueprint {
 
     /**
      * Gets the main factory inventory
+     *
      * @return the main inventory
      */
     public Inventory getInventory() {
@@ -586,18 +668,19 @@ public class Factory implements Blueprint {
 
         // Main Inventory
 
-        OrbInventory inventory = new OrbInventory(StringUtils.firstUpper(material.name().toLowerCase()) + "'s Factory", 27, "factory", true, true);
+        OrbInventory inventory = new OrbInventory((isMoneyReward() ? "Money" : StringUtils.firstUpper(material.name().toLowerCase())) + "'s Factory", 27, "factory", true, true);
 
         inventory.setItem(new OrbInventoryItem(
-                new ItemFall(new ItemStack(material))
+                new ItemFall(new ItemStack((isMoneyReward() ? Material.PAPER : material)))
                         .name(ChatColor.GOLD + "Factory Infos")
                         .lore(Lists.newArrayList(
                                 ChatColor.GRAY + "Type: " + ChatColor.AQUA + StringUtils.firstUpper(type.toString().toLowerCase()),
-                                ChatColor.GRAY + "Reward Item: " + ChatColor.AQUA + StringUtils.firstUpper(material.toString().toLowerCase()),
+                                ChatColor.GRAY + "Reward Item: " + ChatColor.AQUA + (isMoneyReward() ? "Money" : StringUtils.firstUpper(material.toString().toLowerCase())),
                                 ChatColor.GRAY + "Items/second: " + ChatColor.AQUA + "1/" + (delayInMillis / 1000),
                                 ChatColor.GRAY + "Health: " + ChatColor.AQUA + getHealthPercentage(),
                                 ChatColor.GRAY + "Status: " + ChatColor.AQUA + (this.health > 0 ? "Online" : "Broken"),
                                 ChatColor.GRAY + "Collected Items: " + ChatColor.AQUA + itemsCollected + "/" + factoryItemsAmount,
+                                ChatColor.GRAY + "Factory workers Collected Items: " + ChatColor.AQUA + getWorkersItemsAmount() + "/" + (FactoryWorker.STORAGE_AMOUNT * workers.size()),
                                 "",
                                 ChatColor.RED + "Click to withraw all the collected items storable in your inventory"
                         )), "infos", 5, 2
@@ -609,7 +692,7 @@ public class Factory implements Blueprint {
                 new ItemFall(new ItemStack(Material.CACTUS))
                         .name(ChatColor.GREEN + "Upgrade your factory")
                         .lore(Lists.newArrayList(
-                                ChatColor.GRAY + "Upgrade to " + ChatColor.AQUA + nextTier(),
+                                ChatColor.GRAY + "Upgrade to " + ChatColor.AQUA + nextStringTier(),
                                 ChatColor.GRAY + "Cost: " + ChatColor.AQUA + (max ? "N/D" : "$" + nextTier().getCost()),
                                 "",
                                 ChatColor.GRAY + "Click to instant upgrade your factory"
@@ -650,7 +733,52 @@ public class Factory implements Blueprint {
             @Override
             public void onClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
                 if (item != null) {
+
+                    // We need econ
+                    FactoryUnk instance = (FactoryUnk) localPlugin;
+
                     switch (item.getMetaData()) {
+                        case "infos":
+                            int missed = 0;
+
+                            int collect = itemsCollected;
+
+                            if (isMoneyReward()) {
+
+                                int total = itemsCollected + getWorkersItemsAmount();
+
+                                EconomyResponse response = instance.getEconomy().depositPlayer(player, total);
+                                if (response.transactionSuccess()){
+                                    StringUtils.i("<e>${0} has been added to your account", player, total);
+                                    itemsCollected = 0;
+                                    for (FactoryWorker worker : workers){
+                                        worker.setCollectedItems(0);
+                                    }
+                                }
+                            } else {
+                                for (int i = 0; i < (collect); i++) {
+                                    if (PlayersUtil.canHoldItem(player, new ItemStack(material, 1))) {
+                                        player.getInventory().addItem(new ItemStack(material, 1));
+                                        itemsCollected--;
+                                    } else missed++;
+                                }
+
+                                for (FactoryWorker worker : workers) {
+                                    int coll = worker.getCollectedItems();
+                                    for (int j = 0; j < coll; j++) {
+                                        if (PlayersUtil.canHoldItem(player, new ItemStack(material, 1))) {
+                                            player.getInventory().addItem(new ItemStack(material, 1));
+                                            worker.setCollectedItems(worker.getCollectedItems() - 1);
+                                        } else missed++;
+                                    }
+                                }
+                            }
+
+                            if (missed != 0)
+                                StringUtils.e(missed + " items are still in the factory! Free your inventory and withraw them!", player);
+
+                            player.closeInventory();
+                            break;
                         case "settings":
                             player.closeInventory();
                             new BukkitRunnable() {
@@ -710,6 +838,7 @@ public class Factory implements Blueprint {
 
     /**
      * Gets the maintenance inventory of the factory
+     *
      * @return
      */
     private Inventory maintenance() {
@@ -727,7 +856,7 @@ public class Factory implements Blueprint {
             int effective = this.health + num > maxHealth ? maxHealth - this.health : num;
 
             inventory.setItem(new OrbInventoryItem(
-                    new ItemFall(new ItemFall(new ItemStack(Material.WOOL)).name(ChatColor.GOLD + "+" + (num / 2) + "% Repair").dur((short) 1).lore(Lists.newArrayList(
+                    new ItemFall(new ItemFall(new ItemStack(Material.BOOK)).name(ChatColor.GOLD + "+" + (num / 2) + "% Repair").lore(Lists.newArrayList(
                             ChatColor.GRAY + "Health: " + ChatColor.GREEN + this.getHealthPercentage(),
                             ChatColor.GRAY + "Repair: " + ChatColor.GREEN + ChatColor.GREEN + "+" + (((effective * 100) / 200)) + "% ",
                             ChatColor.GRAY + "Repair cost:" + ChatColor.GREEN + " $" + (effective * unitCost)
@@ -761,6 +890,7 @@ public class Factory implements Blueprint {
                                 int value = Integer.parseInt(item.getMetaData());
                                 repair(value);
                                 StringUtils.i(ChatColor.GREEN + "Maintenance done! Current factory health: " + health + "/" + getMaxHealth() + " (" + getHealthPercentage() + ")", player);
+                                getLines().modify("Health", ChatColor.GREEN + "Health: " + getHealthPercentage(), ArmorStand.class);
                                 player.closeInventory();
                             }
 
@@ -795,6 +925,7 @@ public class Factory implements Blueprint {
 
     /**
      * Gets the factory workers inventory
+     *
      * @return
      */
     private Inventory factoryWorkers() {
@@ -807,7 +938,7 @@ public class Factory implements Blueprint {
 
             inventory.setItem(new OrbInventoryItem(
                     new ItemFall(new ItemFall(new ItemStack(Material.SKULL_ITEM)).name(ChatColor.GREEN + "Factory worker #" + worker.getId()).dur((short) 3).lore(Lists.newArrayList(
-                            ChatColor.GRAY + "Storage: " + ChatColor.GREEN + worker.getCollectedItems() + "/" + worker.getStorageAmount()
+                            ChatColor.GRAY + "Storage: " + ChatColor.GREEN + worker.getCollectedItems() + "/" + FactoryWorker.STORAGE_AMOUNT
                     ))),
                     worker.getId() + "", x, 1
             ));
@@ -828,7 +959,6 @@ public class Factory implements Blueprint {
             @Override
             public void onClick(InventoryClickEvent event, Player player, OrbInventory inventory, OrbInventoryItem item) {
                 if (item != null) {
-                    System.out.println("NULL; " + item.getMetaData());
                     switch (item.getMetaData()) {
                         case "back":
                             player.closeInventory();
@@ -840,7 +970,6 @@ public class Factory implements Blueprint {
                             }.runTaskLater(localPlugin, 2L);
                             break;
                         case "add":
-                            System.out.println("aa");
                             if (workers.size() >= 2) {
                                 player.closeInventory();
                                 StringUtils.e("You have reached the maximum amount of factory workers", player);

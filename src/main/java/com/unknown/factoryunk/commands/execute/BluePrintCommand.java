@@ -26,22 +26,31 @@ public class BluePrintCommand extends FineCommand {
             Player player = Bukkit.getPlayer(args[1]);
             if (player == null) StringUtils.e("Player not found", sender);
             else {
-                Material material;
 
-                try {
-                    material = Material.valueOf(args[2].toUpperCase());
-                } catch (IllegalArgumentException e){
-                    StringUtils.e("Material not found", sender);
-                    return;
+                Material material = null;
+                boolean money = false;
+
+                if (args[2].equalsIgnoreCase("money")){
+                    money = true;
+                } else {
+
+                    try {
+                        material = Material.valueOf(args[2].toUpperCase());
+                    } catch (IllegalArgumentException e) {
+                        StringUtils.e("Material not found", sender);
+                        return;
+                    }
+
+
                 }
-
-                if (!FactoryType.isMaterialValid(material)){
+                if (!money && !FactoryType.isMaterialValid(material)){
                     StringUtils.e(material + " is not a valid material", sender);
                     return;
                 }
 
-                FactoryItem factoryItem = new FactoryItem(material);
-                playerSender.getInventory().addItem(new Factory(factoryItem.getMaterial(), factoryItem.getType()).generateBluePrint());
+                FactoryItem factoryItem = null;
+                if (!money) factoryItem = new FactoryItem(material);
+                playerSender.getInventory().addItem(new Factory(money ? Material.RECORD_10 : factoryItem.getMaterial(), money ? FactoryType.COMMON : factoryItem.getType()).generateBluePrint());
             }
 
         } else StringUtils.e("/blueprint give <player> <material>", sender);

@@ -9,8 +9,12 @@ import net.citizensnpcs.api.npc.NPC;
 
     private int id;
     private double alpha;
-    private int storageAmount = 64 * 5; // 5 stacks
-    private int collectedItems = 0;
+    private int collectedItems;
+    private long delayInMillis = 3000L;
+    private long lastDrop;
+
+    // Constant
+    public static final int STORAGE_AMOUNT = 64 * 5; // 5 stacks
 
     public FactoryWorker(int id, int collectedItems) {
         this.id = id;
@@ -18,13 +22,39 @@ import net.citizensnpcs.api.npc.NPC;
         this.collectedItems = collectedItems;
     }
 
+    /**
+     * Gets the Citizen NPC instance
+     * @return the npc
+     */
     public NPC getNPC(){
         return CitizensAPI.getNPCRegistry().getById(id);
     }
 
-    public void check(){
-
+    /**
+     * Add an item to collectedItems (BYPASSING limits)
+     * @param amount
+     */
+    public void collect(int amount){
+        this.collectedItems += amount;
     }
+
+    /**
+     * Reward function for each delay
+     */
+    public void reward(){
+        setLastDrop(System.currentTimeMillis());
+        collect(1);
+    }
+
+
+    /**
+     * Checks if the NPC is ready to reward
+     * @return if can reward
+     */
+    public boolean canDrop(){
+        return this.collectedItems < STORAGE_AMOUNT && System.currentTimeMillis() - lastDrop >= delayInMillis;
+    }
+
 
 }
 
